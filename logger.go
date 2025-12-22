@@ -33,6 +33,11 @@ func InitLogger(filename string) error {
 		if err != nil {
 			return
 		}
+		dir, err := os.Getwd()
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("Текущая директория (os.Getwd):", dir)
 		logger = log.New(logFile, "", 0)
 	})
 	return err
