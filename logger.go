@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -28,19 +29,23 @@ var (
 // InitLogger инициализирует логгер с указанным файлом
 func InitLogger(filename string) error {
 	var err error
-	once.Do(func() {
-		logFile, err = os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			return
-		}
-		dir, err := os.Getwd()
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println("Текущая директория (os.Getwd):", dir)
-		logger = log.New(logFile, "", 0)
-	})
-	return err
+	fmt.Println("---------")
+
+	dir := filepath.Dir(filename)
+
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create log directory: %w", err)
+	}
+
+	logFile, err = os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("log error:", err.Error())
+		return err
+	}
+
+	logger = log.New(logFile, "", 0)
+	fmt.Println("---------")
+	return nil
 }
 
 // Close закрывает файл лога
