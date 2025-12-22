@@ -11,17 +11,20 @@ import (
 	"time"
 )
 
-// LogLevel represents the severity of the log message.
+// LogLevel represents the severity level of a log message.
 type LogLevel int
 
-// Constants defining available log levels.
+// Available log levels.
+//
+// INFO is used for general informational messages.
+// WARN is used for non-critical issues that might require attention.
+// ERROR is used for errors and failures.
 const (
 	INFO LogLevel = iota
 	WARN
 	ERROR
 )
 
-// Internal package variables.
 var (
 	logFile    *os.File
 	logger     *log.Logger
@@ -29,11 +32,12 @@ var (
 	timeFormat = "2006-01-02 15:04:05"
 )
 
-// InitLogger initializes the logger instance with the specified file path.
+// InitLogger initializes the global logger with the given log file path.
 //
-// @brief Sets up the log directory and file, creating them if necessary.
-// @param filename The path to the log file (e.g., "logs/app.log").
-// @return error Returns an error if directory creation or file opening fails.
+// The function ensures that the directory for the log file exists,
+// creates it if necessary, and then opens the log file for appending.
+// If the logger is successfully initialized, subsequent logging
+// functions (Info, Warn, Error) will write to this file.
 func InitLogger(filename string) error {
 	var err error
 	fmt.Println("---------")
@@ -55,10 +59,11 @@ func InitLogger(filename string) error {
 	return nil
 }
 
-// Close gracefully closes the active log file.
+// Close closes the underlying log file if it is open.
 //
-// @brief Closes the underlying file handle if it is open.
-// @return error Returns an error if the file close operation fails.
+// It should be called when the application is shutting down
+// to ensure that all buffered log data is flushed and the
+// file descriptor is released.
 func Close() error {
 	if logFile != nil {
 		return logFile.Close()
@@ -66,36 +71,32 @@ func Close() error {
 	return nil
 }
 
-// Log is the generic logging function that handles formatting and writing.
+// Log writes a formatted log entry with the given level and message.
 //
-// @brief Captures runtime caller info and writes a formatted log entry.
-// @param level The severity level of the log (INFO, WARN, ERROR).
-// @param message The actual log message string.
+// Log automatically captures information about the caller (file name,
+// line number, and function name) and prepends a timestamp and process ID.
+// It is the low-level logging function that is wrapped by Info, Warn, and Error.
 func Log(level LogLevel, message string) {
 	if logger == nil {
 		return
 	}
 
-	// Get information about the calling function (stack depth 2)
 	pc, file, line, ok := runtime.Caller(2)
 	if !ok {
 		file = "unknown"
 		line = 0
 	}
 
-	// Extract only the filename from the full path
 	shortFile := file
 	if lastSlash := strings.LastIndex(file, "/"); lastSlash >= 0 {
 		shortFile = file[lastSlash+1:]
 	}
 
-	// Get the function name
 	funcName := runtime.FuncForPC(pc).Name()
 	if lastDot := strings.LastIndex(funcName, "."); lastDot >= 0 {
 		funcName = funcName[lastDot+1:]
 	}
 
-	// Determine the string representation of the log level
 	levelStr := ""
 	switch level {
 	case INFO:
@@ -105,9 +106,9 @@ func Log(level LogLevel, message string) {
 	case ERROR:
 		levelStr = "ERR"
 	}
+
 	pid := os.Getpid()
 
-	// Format the final log string
 	logMsg := fmt.Sprintf("%s [%s] (%d)%s:%d %s - %s",
 		time.Now().Format(timeFormat),
 		levelStr,
@@ -121,31 +122,28 @@ func Log(level LogLevel, message string) {
 	logger.Println(logMsg)
 }
 
-// Info logs an informational message.
+// Info logs an informational message using printf-style formatting.
 //
-// @brief Wrapper for the generic Log function with INFO level.
-// @param format The format string (printf style).
-// @param args The arguments for the format string.
+// The format string and arguments are passed to fmt.Sprintf
+// and the resulting string is logged with INFO level.
 func Info(format string, args ...interface{}) {
 	message := fmt.Sprintf(format, args...)
 	Log(INFO, message)
 }
 
-// Warn logs a warning message.
+// Warn logs a warning message using printf-style formatting.
 //
-// @brief Wrapper for the generic Log function with WARN level.
-// @param format The format string (printf style).
-// @param args The arguments for the format string.
+// This should be used for situations that are not fatal but may
+// require attention or indicate a potential problem.
 func Warn(format string, args ...interface{}) {
 	message := fmt.Sprintf(format, args...)
 	Log(WARN, message)
 }
 
-// Error logs an error message.
+// Error logs an error message using printf-style formatting.
 //
-// @brief Wrapper for the generic Log function with ERROR level.
-// @param format The format string (printf style).
-// @param args The arguments for the format string.
+// Use this for error conditions and failures that should be visible
+// in application logs.
 func Error(format string, args ...interface{}) {
 	message := fmt.Sprintf(format, args...)
 	Log(ERROR, message)
